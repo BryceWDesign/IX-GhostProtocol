@@ -1,56 +1,63 @@
 """
 IX-GhostProtocol: identity_manager.py
-Manages local identity key generation, loading, and storage.
+Manages cryptographic identity, keypair generation, and persistent fingerprints.
 """
 
 import os
-import json
-from cryptography.hazmat.primitives.asymmetric.x25519 import (
-    X25519PrivateKey, X25519PublicKey
-)
+from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 
-IDENTITY_FILE = "storage/identity.json"
 
 class IdentityManager:
-    def __init__(self):
+    def __init__(self, key_path: str = "node.key"):
+        self.key_path = key_path
         self.private_key = None
         self.public_key = None
-        self.load_or_generate_keys()
+        self.node_id = None
+        self._load_or_generate_keys()
 
-    def load_or_generate_keys(self):
-        if os.path.exists(IDENTITY_FILE):
-            with open(IDENTITY_FILE, "r") as f:
-                data = json.load(f)
-                priv_bytes = bytes.fromhex(data["private_key"])
-                self.private_key = X25519PrivateKey.from_private_bytes(priv_bytes)
-                self.public_key = self.private_key.public_key()
+    def _load_or_generate_keys(self):
+        if os.path.exists(self.key_path):
+            with open(self.key_path, "rb") as f:
+                self.private_key = serialization.load_pem_private_key(
+                    f.read(),
+                    password=None,
+                    backend=default_backend()
+                )
         else:
-            self.private_key = X25519PrivateKey.generate()
-            self.public_key = self.private_key.public_key()
-            self.save_keys()
+            self.private_key = ed25519.Ed25519PrivateKey.generate()
+            with open(self.key_path, "wb") as f:
+                f.write(
+                    self.private_key.private_bytes(
+                        encoding=serialization.Encoding.PEM,
+                        format=serialization.PrivateFormat.PKCS8,
+                        encryption_algorithm=serialization.NoEncryption()
+                    )
+                )
 
-    def save_keys(self):
-        priv_bytes = self.private_key.private_bytes(
+        self.public_key = self.private_key.public_key()
+        self.node_id = self.get_fingerprint()
+
+    def get_fingerprint(self) -> str:
+        pub_bytes = self.public_key.public_bytes(
             encoding=serialization.Encoding.Raw,
-            format=serialization.PrivateFormat.Raw,
-            encryption_algorithm=serialization.NoEncryption()
+            format=serialization.PublicFormat.Raw
         )
-        data = {
-            "private_key": priv_bytes.hex()
-        }
-        os.makedirs(os.path.dirname(IDENTITY_FILE), exist_ok=True)
-        with open(IDENTITY_FILE, "w") as f:
-            json.dump(data, f, indent=2)
+        return pub_bytes.hex()
 
-    def get_private_key_bytes(self):
-        return self.private_key.private_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PrivateFormat.Raw,
-            encryption_algorithm=serialization.NoEncryption()
-        )
+    def sign(self, data: bytes) -> bytes:
+        return self.private_key.sign(data)
 
-    def get_public_key_bytes(self):
+    def verify(self, signature: bytes, data: bytes, public_key_bytes: bytes) -> bool:
+        try:
+            pub_key = ed25519.Ed25519PublicKey.from_public_bytes(public_key_bytes)
+            pub_key.verify(signature, data)
+            return True
+        except Exception:
+            return False
+
+    def get_public_key_bytes(self) -> bytes:
         return self.public_key.public_bytes(
             encoding=serialization.Encoding.Raw,
             format=serialization.PublicFormat.Raw
