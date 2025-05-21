@@ -1,62 +1,81 @@
 # IX-GhostProtocol – API Specification
 
-This document defines the application programming interfaces (APIs) for interacting with IX-GhostProtocol for both end users and developers.
+This document describes the external interfaces exposed by IX-GhostProtocol for applications to interact with the protocol securely and efficiently.
 
 ---
 
 ## 🎯 API Goals
 
-- Provide secure, minimal-exposure access to core protocol functions.
-- Support integration into diverse applications and platforms.
-- Allow both synchronous and asynchronous operation.
-- Abstract complex cryptographic and network operations.
+- Provide simple, secure methods for messaging and network management.
+- Abstract complex cryptographic and routing details.
+- Support asynchronous and event-driven usage.
+- Enable extensibility and cross-language bindings.
 
 ---
 
-## 🛠 API Modules
+## 📨 Messaging API
 
-### 1. Initialization & Configuration
-- `initialize(config)`: Setup protocol instance with user settings and keys.
-- `setTransport(transportType)`: Select transport plugin.
-- `setRouting(routingType)`: Select routing plugin.
+### send_message(destination: PublicKey, message: bytes) -> MessageID
+- Encrypts and routes the message to the specified destination.
+- Returns a unique message ID for tracking.
 
-### 2. Key Management
-- `generateKeys()`: Create ephemeral key pairs.
-- `importKey(keyData)`: Import external keys.
-- `exportKey()`: Export keys securely.
+### receive_message() -> (MessageID, PublicKey, bytes)
+- Retrieves the next decrypted message available.
+- Includes sender’s public key for authentication.
 
-### 3. Messaging
-- `sendMessage(destination, message, options)`: Encrypt and send message.
-- `receiveMessage()`: Poll or callback for incoming messages.
-- `deleteMessage(messageId)`: Securely erase message from storage.
-
-### 4. Session Control
-- `startSession(peerId)`: Initiate secure session.
-- `endSession(peerId)`: Terminate session cleanly.
-
-### 5. Diagnostics & Logging
-- `getStatus()`: Retrieve current protocol status.
-- `getLogs(level)`: Access logs filtered by severity.
+### delete_message(message_id: MessageID) -> bool
+- Securely deletes the specified message from local storage.
 
 ---
 
-## 🔒 Security Considerations
+## 🌐 Network API
 
-- All API calls operate within secure enclave to prevent data leakage.
-- Endpoints enforce strict authentication and authorization.
-- Sensitive data never exposed in plaintext externally.
+### connect_peer(peer_address: str) -> bool
+- Establishes a connection to a peer node.
+
+### disconnect_peer(peer_id: PublicKey) -> bool
+- Terminates connection to specified peer.
+
+### get_peer_list() -> List[PublicKey]
+- Returns current connected peers.
+
+### discover_peers() -> List[PublicKey]
+- Initiates peer discovery process.
 
 ---
 
-## 🔄 Async Operation
+## 🔐 Key Management API
 
-- Messaging and network functions support promises/callbacks.
-- Event-driven model for incoming messages and connection events.
+### generate_keypair() -> (PublicKey, PrivateKey)
+- Creates a new cryptographic key pair.
+
+### import_key(private_key: bytes) -> bool
+- Imports an existing private key.
+
+### export_public_key() -> PublicKey
+- Returns the current public key.
 
 ---
 
-## 🧩 Extensibility
+## 🧩 Event Hooks
 
-- Plugin hooks allow extending or overriding core API behavior.
-- Support planned for bindings in multiple programming languages.
+- on_message_received(callback)
+- on_peer_connected(callback)
+- on_peer_disconnected(callback)
+- on_error(callback)
+
+---
+
+## Security Considerations
+
+- All API calls must be authenticated where applicable.
+- Sensitive data never exposed in plaintext via API.
+- Rate limiting and access control mechanisms.
+
+---
+
+## Extensibility
+
+- Supports bindings for Python, Rust, Go, and JavaScript planned.
+- API versioning for backward compatibility.
 
