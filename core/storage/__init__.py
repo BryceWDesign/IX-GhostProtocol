@@ -1,6 +1,6 @@
 # core/storage/__init__.py
 # Initializes the storage module for IX-GhostProtocol
 
-from .storage_engine import StorageEngine
+from .storage_manager import StorageManager
 
-__all__ = ["StorageEngine"]
+__all__ = ["StorageManager"]
