@@ -1,6 +1,6 @@
 # core/transport/__init__.py
 # Initializes the transport module for IX-GhostProtocol
 
-from .tor_adapter import TorAdapter
+from .transport_manager import TransportManager
 
-__all__ = ["TorAdapter"]
+__all__ = ["TransportManager"]
